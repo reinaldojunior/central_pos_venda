@@ -558,10 +558,11 @@ tbody td{padding:11px 14px;vertical-align:middle;}
     <select id="fil-setor-ab" onchange="renderAb()"><option value="">Todos os setores</option><option>Bruta</option><option>Acabamento</option><option>Em Análise</option></select>
     <select id="fil-serv-ab" onchange="renderAb()"><option value="">Todos os serviços</option></select>
     <div class="sp"></div>
+    <button class="btn btn-o btn-sm" id="ab-sort-btn" onclick="toggleAbSort()">🔴 Mais antigas primeiro</button>
     <button class="btn btn-o btn-sm" onclick="exportCSV('ab')">⬇ Exportar</button>
   </div>
   <div class="tw"><table>
-    <thead><tr><th>OS</th><th>Empresa</th><th>Endereço</th><th>Setor / Serviço</th><th>Chamado</th><th>Dias Aberta</th><th>Status</th><th>Problema</th><th></th></tr></thead>
+    <thead><tr><th style="width:70px">Ações</th><th>OS</th><th>Empresa</th><th>Endereço</th><th>Setor / Serviço</th><th>Chamado</th><th>Dias Aberta</th><th>Status</th><th>Problema</th></tr></thead>
     <tbody id="tbody-ab"></tbody>
   </table></div>
   <div class="pg" id="pg-ab"></div>
@@ -576,7 +577,7 @@ tbody td{padding:11px 14px;vertical-align:middle;}
     <button class="btn btn-o btn-sm" onclick="exportCSV('fi')">⬇ Exportar</button>
   </div>
   <div class="tw"><table>
-    <thead><tr><th>OS</th><th>Empresa</th><th>Endereço</th><th>Serviço</th><th>Data Final</th><th>Status</th><th>Laudo</th><th></th></tr></thead>
+    <thead><tr><th style="width:50px">👁</th><th>OS</th><th>Empresa</th><th>Endereço</th><th>Setor / Serviço</th><th>Chamado</th><th>Status</th><th>Problema</th></tr></thead>
     <tbody id="tbody-fi"></tbody>
   </table></div>
   <div class="pg" id="pg-fi"></div>
@@ -652,7 +653,11 @@ tbody td{padding:11px 14px;vertical-align:middle;}
   <div class="modal">
     <div class="mh"><h2 id="det-ttl">Detalhes</h2><button class="mclose" onclick="closeM('mod-det')">&#10005;</button></div>
     <div class="mbody" id="det-body"></div>
-    <div class="mfoot"><button class="btn btn-o btn-sm" onclick="closeM('mod-det')">Fechar</button><button class="btn btn-p btn-sm" id="det-edit-btn">&#9999;&#65039; Editar</button></div>
+    <div class="mfoot">
+  <button class="btn btn-o btn-sm" onclick="closeM('mod-det')">Fechar</button>
+  <button class="btn btn-sm" style="background:#e8f8ee;color:#128C7E;border:1.5px solid #b8e8c8" id="det-agenda-btn">&#128197; Agendar</button>
+  <button class="btn btn-p btn-sm" id="det-edit-btn" style="display:none">&#9999;&#65039; Editar</button>
+</div>
   </div>
 </div>
 <div class="overlay" id="mod-os">
@@ -1333,17 +1338,50 @@ function filteredOS(type){
 }
 function renderAb(){
   var data=filteredOS("ab");
+  var sortOrd=window._abSort||"desc";
+  data=data.slice().sort(function(a,b){
+    var da=diasAberta(a)||0,db=diasAberta(b)||0;
+    return sortOrd==="desc"?db-da:da-db;
+  });
   var pages=Math.ceil(data.length/PAGE)||1;
   if(pgAb>pages) pgAb=1;
   var slice=data.slice((pgAb-1)*PAGE,pgAb*PAGE);
   var tbody=document.getElementById("tbody-ab");
-  if(!slice.length){tbody.innerHTML='<tr><td colspan="9"><div class="empty-st"><div>📋</div><p>Nenhuma OS encontrada.</p></div></td></tr>';return;}
-  tbody.innerHTML=slice.map(function(r,i){
+  if(!slice.length){
+    tbody.innerHTML='<tr><td colspan="9"><div class="empty-st"><div>📋</div><p>Nenhuma OS encontrada.</p></div></td></tr>';
+    return;
+  }
+  var sortBtn=document.getElementById("ab-sort-btn");
+  if(sortBtn) sortBtn.textContent=(sortOrd==="desc"?"🔴 Mais antigas primeiro":"🟢 Mais novas primeiro");
+  var rows="";
+  for(var i=0;i<slice.length;i++){
+    var r=slice[i];
     var gi=(pgAb-1)*PAGE+i;
-    var safe=(r.pendencias||"").replace(/"/g,"&quot;").replace(/\n/g," ");
-    return'<tr><td><span class="osnum">'+r.os+'</span></td><td>'+empTag(r.empresa)+'</td><td><div class="addr-cell">'+r.endereco+'<small>'+(r.emp||"")+'</small></div></td><td><span class="tipo-chip">'+(r.setor||"—")+'</span><br><span style="font-size:.7rem;color:var(--txt3)">'+(r.servico||"—")+'</span></td><td style="font-size:.74rem;color:var(--txt3)">'+(fmtD(r.data_chamado)||fmtD(r.data_visita))+'</td><td>'+diasCell(r)+'</td><td>'+badgeSt(r.status)+'</td><td><div class="pend-prev" title="'+safe+'">'+(r.pendencias||"—")+'</div></td><td><div class="acts"><button class="act-btn act-v" onclick="viewOS('+gi+',\'ab\')" title="Ver">👁</button><button class="act-btn act-e" onclick="editOS('+gi+',\'ab\')" title="Editar">✏️</button></div></td></tr>';
-  }).join("");
+    var pend=(r.pendencias||"").replace(/"/g,"&quot;").replace(/\n/g," ").replace(/\r/g," ");
+    rows+="<tr>";
+    rows+="<td style='white-space:nowrap'>";
+    rows+="<button class='act-btn act-v' data-gi='"+gi+"' title='Ver'>&#128065;</button>";
+    rows+="</td>";
+    rows+="<td><span class='osnum'>"+r.os+"</span></td>";
+    rows+="<td>"+empTag(r.empresa)+"</td>";
+    rows+="<td><div class='addr-cell'>"+r.endereco+"<small>"+(r.emp||"")+"</small></div></td>";
+    rows+="<td><span class='tipo-chip'>"+(r.setor||"&mdash;")+"</span><br><span style='font-size:.7rem;color:var(--txt3)'>"+(r.servico||"&mdash;")+"</span></td>";
+    rows+="<td style='font-size:.74rem;color:var(--txt3)'>"+(fmtD(r.data_chamado)||fmtD(r.data_visita)||"&mdash;")+"</td>";
+    rows+="<td>"+diasCell(r)+"</td>";
+    rows+="<td>"+badgeSt(r.status)+"</td>";
+    rows+="<td><div class='pend-prev' title='"+pend+"'>"+(r.pendencias||"&mdash;")+"</div></td>";
+    rows+="</tr>";
+  }
+  tbody.innerHTML=rows;
+  Array.prototype.forEach.call(tbody.querySelectorAll(".act-v"),function(b){
+    b.onclick=function(){viewOS(parseInt(this.getAttribute("data-gi")),"ab");};
+  });
+
   renderPg("pg-ab",pages,pgAb,function(p){pgAb=p;renderAb();});
+}
+function toggleAbSort(){
+  window._abSort=(window._abSort==="desc"?"asc":"desc");
+  pgAb=1; renderAb();
 }
 function renderFi(){
   var data=filteredOS("fi");
@@ -1351,12 +1389,33 @@ function renderFi(){
   if(pgFi>pages) pgFi=1;
   var slice=data.slice((pgFi-1)*PAGE,pgFi*PAGE);
   var tbody=document.getElementById("tbody-fi");
-  if(!slice.length){tbody.innerHTML='<tr><td colspan="8"><div class="empty-st"><div>📂</div><p>Nenhuma OS encontrada.</p></div></td></tr>';return;}
-  tbody.innerHTML=slice.map(function(r,i){
+  if(!slice.length){
+    tbody.innerHTML='<tr><td colspan="8"><div class="empty-st"><div>📂</div><p>Nenhuma OS encontrada.</p></div></td></tr>';
+    return;
+  }
+  var rows="";
+  for(var i=0;i<slice.length;i++){
+    var r=slice[i];
     var gi=(pgFi-1)*PAGE+i;
-    var safe=(r.pendencias||"").replace(/"/g,"&quot;").replace(/\n/g," ");
-    return'<tr><td><span class="osnum">'+r.os+'</span></td><td>'+empTag(r.empresa)+'</td><td><div class="addr-cell">'+r.endereco+'<small>'+(r.emp||"")+'</small></div></td><td><span class="tipo-chip">'+(r.servico||"—")+'</span></td><td style="font-size:.74rem;color:var(--txt3)">'+fmtD(r.data_final)+'</td><td>'+badgeSt(r.status)+'</td><td><div class="pend-prev" title="'+safe+'">'+(r.pendencias||"—")+'</div></td><td><button class="act-btn act-v" onclick="viewOS('+gi+',\'fi\')" title="Ver">👁</button></td></tr>';
-  }).join("");
+    var safe=(r.pendencias||"").replace(/"/g,"&quot;").replace(/[\n\r]/g," ");
+    rows+="<tr>";
+    rows+="<td><button class='act-btn act-v' data-gi='"+gi+"' data-type='fi' title='Ver'>&#128065;</button></td>";
+    rows+="<td><span class='osnum'>"+r.os+"</span></td>";
+    rows+="<td>"+empTag(r.empresa)+"</td>";
+    rows+="<td><div class='addr-cell'>"+r.endereco+"<small>"+(r.emp||"")+"</small></div></td>";
+    rows+="<td><span class='tipo-chip'>"+(r.setor||"—")+"</span><br><span style='font-size:.7rem;color:var(--txt3)'>"+(r.servico||"—")+"</span></td>";
+    rows+="<td style='font-size:.74rem;color:var(--txt3)'>"+(fmtD(r.data_chamado)||fmtD(r.data_visita)||"—")+"</td>";
+    rows+="<td>"+badgeSt(r.status)+"</td>";
+    rows+="<td><div class='pend-prev' title='"+safe+"'>"+(r.pendencias||"—")+"</div></td>";
+    rows+="<td style='white-space:nowrap'>";
+    rows+="<button class='act-btn act-v' data-gi='"+gi+"' data-type='fi' title='Ver'>👁</button>";
+    rows+="</td>";
+    rows+="</tr>";
+  }
+  tbody.innerHTML=rows;
+  tbody.querySelectorAll(".act-v").forEach(function(b){
+    b.onclick=function(){ viewOS(parseInt(this.getAttribute("data-gi")),"fi"); };
+  });
   renderPg("pg-fi",pages,pgFi,function(p){pgFi=p;renderFi();});
 }
 function renderPg(id,pages,cur,cb){
@@ -1371,7 +1430,28 @@ function renderPg(id,pages,cur,cb){
 function viewOS(idx,type){
   var data=filteredOS(type),r=data[idx];if(!r) return;
   document.getElementById("det-ttl").textContent="OS "+r.os+" — "+r.endereco;
-  document.getElementById("det-edit-btn").onclick=function(){closeM("mod-det");editOS(idx,type);};
+  // Edit button - only show if has permission and OS is aberta
+  var editBtn=document.getElementById("det-edit-btn");
+  if(temPerm("os_editar")){
+    editBtn.style.display="";
+    editBtn.onclick=function(){closeM("mod-det");editOS(idx,type);};
+  } else {
+    editBtn.style.display="none";
+  }
+  // Agenda button - pre-fill with OS data
+  var agendaBtn=document.getElementById("det-agenda-btn");
+  agendaBtn.onclick=function(){
+    closeM("mod-det");
+    // Pre-fill agenda form with OS data
+    document.getElementById("t-os").value=r.os;
+    document.getElementById("t-end").value=r.endereco;
+    document.getElementById("t-desc").value=r.pendencias||"";
+    document.getElementById("t-data").value=dateKey(agDate);
+    document.getElementById("t-tipo").value=r.servico||"";
+    document.getElementById("task-ttl").textContent="Agendar — OS "+r.os;
+    editTaskId=null;
+    openM("mod-task");
+  };
   document.getElementById("det-body").innerHTML='<div class="dg">'+
     '<div class="di"><span class="dk">Nº OS</span><span class="dv" style="font-family:\'Playfair Display\',serif;font-size:1.05rem">'+r.os+'</span></div>'+
     '<div class="di"><span class="dk">Status</span><span class="dv">'+badgeSt(r.status)+'</span></div>'+
@@ -1390,6 +1470,25 @@ function viewOS(idx,type){
     (r.etapas?'<div class="dblock"><h4>✅ Etapas</h4><p style="color:var(--ok)">'+r.etapas+'</p></div>':"")+
     (r.obs?'<div class="dblock"><h4>📝 Obs</h4><p>'+r.obs+'</p></div>':"")+
     (r.colaborador?'<div class="dblock"><h4>👷 Colaborador</h4><p>'+r.colaborador+'</p></div>':"");
+
+  // Show existing agenda tasks linked to this OS
+  var linkedTasks = TASKS.filter(function(t){ return String(t.os)===String(r.os); });
+  var agSection = "";
+  if(linkedTasks.length){
+    agSection += '<div class="dblock" style="margin-top:14px">';
+    agSection += '<h4>&#128197; Agendamentos vinculados ('+linkedTasks.length+')</h4>';
+    linkedTasks.forEach(function(t){
+      var crew=CREW.find(function(c){return c.id===t.crewId;})||{nome:"—"};
+      agSection += '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--sand2)">';
+      agSection += '<span style="font-size:.72rem;color:var(--txt3);width:80px;flex-shrink:0">'+(t.data?fmtD(t.data):"—")+(t.hora?" "+t.hora:"")+'</span>';
+      agSection += '<span style="font-size:.8rem;flex:1"><b>'+crew.nome+'</b> — '+(t.tipo||"Serviço")+'</span>';
+      agSection += '<span style="font-size:.72rem">'+(t.done?"✅":"⏳")+'</span>';
+      agSection += '</div>';
+    });
+    agSection += '</div>';
+  }
+  var currentBody = document.getElementById("det-body").innerHTML;
+  document.getElementById("det-body").innerHTML = currentBody + agSection;
   openM("mod-det");
 }
 function editOS(idx,type){
