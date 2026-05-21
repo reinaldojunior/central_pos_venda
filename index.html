@@ -463,6 +463,10 @@ tbody td{padding:11px 14px;vertical-align:middle;}
 }
 .inp-center:focus{border-color:var(--navy3);box-shadow:0 0 0 3px rgba(26,52,96,.08);}
 
+.prio-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:700;}
+.prio-urgente{background:#fde8e8;color:#8a0010;border:1px solid #ffaaaa;}
+.prio-moderado{background:#fff8e0;color:#7a5800;border:1px solid #ffd070;}
+.prio-baixa{background:#e0f8ec;color:#0a5c28;border:1px solid #80d8a0;}
 @media(max-width:900px){.charts{grid-template-columns:1fr;}.welcome-right{display:none;}}
 @media(max-width:640px){
   .fg,.dg{grid-template-columns:1fr;}.fg .full,.di.full{grid-column:1;}
@@ -562,7 +566,7 @@ tbody td{padding:11px 14px;vertical-align:middle;}
     <button class="btn btn-o btn-sm" onclick="exportCSV('ab')">⬇ Exportar</button>
   </div>
   <div class="tw"><table>
-    <thead><tr><th style="width:70px">Ações</th><th>OS</th><th>Empresa</th><th>Endereço</th><th>Setor / Serviço</th><th>Chamado</th><th>Dias Aberta</th><th>Status</th><th>Problema</th></tr></thead>
+    <thead><tr><th style="width:50px">Ações</th><th>OS</th><th>Prioridade</th><th>Empresa</th><th>Endereço</th><th>Setor / Serviço</th><th>Chamado</th><th>Dias Aberta</th><th>Status</th><th>Problema</th></tr></thead>
     <tbody id="tbody-ab"></tbody>
   </table></div>
   <div class="pg" id="pg-ab"></div>
@@ -655,6 +659,7 @@ tbody td{padding:11px 14px;vertical-align:middle;}
     <div class="mbody" id="det-body"></div>
     <div class="mfoot">
   <button class="btn btn-o btn-sm" onclick="closeM('mod-det')">Fechar</button>
+  <button class="btn btn-sm" id="det-del-btn" style="display:none;background:#fde8e5;color:var(--err);border:1.5px solid #ffaaaa">🗑️ Excluir</button>
   <button class="btn btn-sm" style="background:#e8f8ee;color:#128C7E;border:1.5px solid #b8e8c8" id="det-agenda-btn">&#128197; Agendar</button>
   <button class="btn btn-p btn-sm" id="det-edit-btn" style="display:none">&#9999;&#65039; Editar</button>
 </div>
@@ -669,7 +674,12 @@ tbody td{padding:11px 14px;vertical-align:middle;}
         <div class="fi"><label>N&#186; OS</label><input id="f-os" readonly></div>
         <div class="fi"><label>Empresa</label><select id="f-emp"><option>NOVA</option><option>ANTIGA</option><option>AGREGADO</option></select></div>
         <div class="fi"><label>Setor</label><select id="f-setor"><option>Bruta</option><option>Acabamento</option><option>Em Análise</option></select></div>
-        <div class="fi"><label>Grupo</label><select id="f-grupo"><option value="1">1 – Emergência</option><option value="2">2 – Urgente</option><option value="3" selected>3 – Normal</option><option value="4">4 – Baixa</option></select></div>
+        <div class="fi"><label>Prioridade</label>
+          <select id="f-grupo">
+            <option value="urgente">🔴 Urgente</option>
+            <option value="moderado" selected>🟡 Moderado</option>
+            <option value="baixa">🟢 Baixa</option>
+          </select></div>
         <div class="sec-lbl">Localização</div>
         <div class="fi full"><label>Endereço / Unidade</label><input id="f-end" placeholder="Ex: Gran Reserve 12-43"></div>
         <div class="sec-lbl">Serviço</div>
@@ -723,7 +733,27 @@ tbody td{padding:11px 14px;vertical-align:middle;}
       <div class="sec-lbl" style="margin-bottom:12px">Adicionar</div>
       <div class="fg">
         <div class="fi"><label>Nome</label><input id="nc-nome" placeholder="Nome completo"></div>
-        <div class="fi"><label>Função</label><select id="nc-role"><option value="pintor">Pintor</option><option value="eletricista">Eletricista</option><option value="tecnico">Técnico</option><option value="pedreiro">Pedreiro</option><option value="encanador">Encanador</option><option value="marceneiro">Marceneiro</option><option value="azulejista">Azulejista</option><option value="outro">Outro</option></select></div>
+        <div class="fi"><label>Função</label><select id="nc-role" onchange="var w=document.getElementById('nc-role-outro-wrap');w.style.display=this.value==='outro'?'block':'none'">
+              <option value="pintor">🖌️ Pintor</option>
+              <option value="eletricista">⚡ Eletricista</option>
+              <option value="tecnico">🔧 Técnico de Campo</option>
+              <option value="pedreiro">🧱 Pedreiro</option>
+              <option value="encanador">🚿 Encanador / Hidráulico</option>
+              <option value="marceneiro">🪚 Marceneiro</option>
+              <option value="azulejista">🔲 Azulejista / Revestidor</option>
+              <option value="gesseiro">🪣 Gesseiro / Dry Wall</option>
+              <option value="serralheiro">🔩 Serralheiro</option>
+              <option value="impermeabilizador">💧 Impermeabilizador</option>
+              <option value="vidraceiro">🪟 Vidraceiro / Esquadrias</option>
+              <option value="paisagista">🌿 Paisagista / Jardineiro</option>
+              <option value="limpeza">🧹 Limpeza Pós-Obra</option>
+              <option value="supervisor">👷 Supervisor / Encarregado</option>
+              <option value="outro">✏️ Outro (campo livre)</option>
+            </select></div>
+        <div class="fi full" id="nc-role-outro-wrap" style="display:none">
+          <label>Função personalizada</label>
+          <input id="nc-role-outro" placeholder="Ex: Gesseiro, Pintor de fachada…">
+        </div>
         <div class="fi full"><label>Telefone / WhatsApp</label><input id="nc-tel" placeholder="(00) 00000-0000"></div>
         <div class="fi full"><button class="btn btn-p btn-sm" onclick="addCrew()">+ Adicionar</button></div>
       </div>
@@ -1143,6 +1173,26 @@ async function desativarUsuario() {
   }
 }
 
+function prioBadge(g){
+  var map={
+    "urgente":["🔴","Urgente","prio-urgente"],
+    "moderado":["🟡","Moderado","prio-moderado"],
+    "baixa":["🟢","Baixa","prio-baixa"],
+    "1":["🔴","Urgente","prio-urgente"],
+    "2":["🔴","Urgente","prio-urgente"],
+    "3":["🟡","Moderado","prio-moderado"],
+    "4":["🟢","Baixa","prio-baixa"],
+    "5":["🟢","Baixa","prio-baixa"],
+    "1.0":["🔴","Urgente","prio-urgente"],
+    "2.0":["🔴","Urgente","prio-urgente"],
+    "3.0":["🟡","Moderado","prio-moderado"],
+    "4.0":["🟢","Baixa","prio-baixa"],
+    "5.0":["🟢","Baixa","prio-baixa"],
+  };
+  var v=map[String(g)];
+  if(!v) return '<span class="prio-badge prio-moderado">🟡 Moderado</span>';
+  return '<span class="prio-badge '+v[2]+'">'+v[0]+' '+v[1]+'</span>';
+}
 /* ── NORMALIZE ─────────────────────────────────────────────── */
 function ns(s){var m={"Eletrica":"Elétrica","ELétrica":"Elétrica","Pintua":"Pintura","Pisos":"Piso","Hridraulica":"Hidráulica","Hidraulica":"Hidráulica","bruta":"Bruta","diversos":"Diversos"};return m[s]||s||"";}
 function nst(s){var m={"bruta":"Bruta","Bruta ":"Bruta"};return(m[s]||s||"").trim();}
@@ -1348,7 +1398,7 @@ function renderAb(){
   var slice=data.slice((pgAb-1)*PAGE,pgAb*PAGE);
   var tbody=document.getElementById("tbody-ab");
   if(!slice.length){
-    tbody.innerHTML='<tr><td colspan="9"><div class="empty-st"><div>📋</div><p>Nenhuma OS encontrada.</p></div></td></tr>';
+    tbody.innerHTML='<tr><td colspan="10"><div class="empty-st"><div>📋</div><p>Nenhuma OS encontrada.</p></div></td></tr>';
     return;
   }
   var sortBtn=document.getElementById("ab-sort-btn");
@@ -1363,6 +1413,7 @@ function renderAb(){
     rows+="<button class='act-btn act-v' data-gi='"+gi+"' title='Ver'>&#128065;</button>";
     rows+="</td>";
     rows+="<td><span class='osnum'>"+r.os+"</span></td>";
+    rows+="<td>"+prioBadge(r.grupo)+"</td>";
     rows+="<td>"+empTag(r.empresa)+"</td>";
     rows+="<td><div class='addr-cell'>"+r.endereco+"<small>"+(r.emp||"")+"</small></div></td>";
     rows+="<td><span class='tipo-chip'>"+(r.setor||"&mdash;")+"</span><br><span style='font-size:.7rem;color:var(--txt3)'>"+(r.servico||"&mdash;")+"</span></td>";
@@ -1404,12 +1455,10 @@ function renderFi(){
     rows+="<td>"+empTag(r.empresa)+"</td>";
     rows+="<td><div class='addr-cell'>"+r.endereco+"<small>"+(r.emp||"")+"</small></div></td>";
     rows+="<td><span class='tipo-chip'>"+(r.setor||"—")+"</span><br><span style='font-size:.7rem;color:var(--txt3)'>"+(r.servico||"—")+"</span></td>";
-    rows+="<td style='font-size:.74rem;color:var(--txt3)'>"+(fmtD(r.data_chamado)||fmtD(r.data_visita)||"—")+"</td>";
+    rows+="<td style='font-size:.74rem;color:var(--txt3)'>"+(fmtD(r.data_final)||"—")+"</td>";
     rows+="<td>"+badgeSt(r.status)+"</td>";
     rows+="<td><div class='pend-prev' title='"+safe+"'>"+(r.pendencias||"—")+"</div></td>";
-    rows+="<td style='white-space:nowrap'>";
-    rows+="<button class='act-btn act-v' data-gi='"+gi+"' data-type='fi' title='Ver'>👁</button>";
-    rows+="</td>";
+    rows+="";
     rows+="</tr>";
   }
   tbody.innerHTML=rows;
@@ -1432,11 +1481,15 @@ function viewOS(idx,type){
   document.getElementById("det-ttl").textContent="OS "+r.os+" — "+r.endereco;
   // Edit button - only show if has permission and OS is aberta
   var editBtn=document.getElementById("det-edit-btn");
+  var delBtn=document.getElementById("det-del-btn");
   if(temPerm("os_editar")){
     editBtn.style.display="";
     editBtn.onclick=function(){closeM("mod-det");editOS(idx,type);};
+    delBtn.style.display="";
+    delBtn.onclick=function(){deleteOS(idx,type);};
   } else {
     editBtn.style.display="none";
+    delBtn.style.display="none";
   }
   // Agenda button - pre-fill with OS data
   var agendaBtn=document.getElementById("det-agenda-btn");
@@ -1459,13 +1512,7 @@ function viewOS(idx,type){
     '<div class="di"><span class="dk">Empresa</span><span class="dv">'+empTag(r.empresa)+'</span></div>'+
     '<div class="di"><span class="dk">Setor</span><span class="dv"><span class="tipo-chip">'+(r.setor||"—")+'</span></span></div>'+
     '<div class="di"><span class="dk">Serviço</span><span class="dv">'+(r.servico||"—")+'</span></div>'+
-    '<div class="di"><span class="dk">Grupo</span><span class="dv">'+(r.grupo||"—")+'</span></div>'+
-    '<div class="di"><span class="dk">Data Chamado</span><span class="dv">'+fmtD(r.data_chamado)+'</span></div>'+
-    '<div class="di"><span class="dk">Data Visita</span><span class="dv">'+fmtD(r.data_visita)+'</span></div>'+
-    '<div class="di"><span class="dk">Data Final</span><span class="dv">'+fmtD(r.data_final)+'</span></div>'+
-    '<div class="di"><span class="dk">Habite-se</span><span class="dv">'+fmtD(r.habite_se)+'</span></div>'+
-    '<div class="di"><span class="dk">Aquisição</span><span class="dv">'+fmtD(r.aquisicao)+'</span></div>'+
-    '</div>'+
+    '<div class=\'di\'><span class=\'dk\'>Prioridade</span><span class=\'dv\'>'+prioBadge(r.grupo)+'</span></div>'+
     (r.pendencias?'<div class="dblock"><h4>📋 Pendência</h4><p>'+r.pendencias+'</p></div>':"")+
     (r.etapas?'<div class="dblock"><h4>✅ Etapas</h4><p style="color:var(--ok)">'+r.etapas+'</p></div>':"")+
     (r.obs?'<div class="dblock"><h4>📝 Obs</h4><p>'+r.obs+'</p></div>':"")+
@@ -1499,7 +1546,8 @@ function editOS(idx,type){
   document.getElementById("f-os").value=r.os;
   document.getElementById("f-emp").value=r.empresa||"NOVA";
   document.getElementById("f-setor").value=r.setor||"Bruta";
-  document.getElementById("f-grupo").value=r.grupo||"3";
+  var gMap={"1":"urgente","2":"urgente","1.0":"urgente","2.0":"urgente","3":"moderado","3.0":"moderado","4":"baixa","4.0":"baixa","5":"baixa","5.0":"baixa"};
+  document.getElementById("f-grupo").value=gMap[String(r.grupo)]||r.grupo||"moderado";
   document.getElementById("f-end").value=r.endereco||"";
   document.getElementById("f-serv").value=r.servico||"";
   document.getElementById("f-acao").value=r.acoes||"";
@@ -1536,11 +1584,25 @@ function saveOS(){
   var end=document.getElementById("f-end").value.trim();
   if(!end){alert("Informe o endereço/unidade.");return;}
   var rec={os:parseInt(document.getElementById("f-os").value)||nextOSNum(),empresa:document.getElementById("f-emp").value,setor:document.getElementById("f-setor").value,grupo:document.getElementById("f-grupo").value,endereco:end,emp:getEmp(end),servico:document.getElementById("f-serv").value,acoes:document.getElementById("f-acao").value,data_chamado:document.getElementById("f-dcham").value,data_visita:document.getElementById("f-dvis").value,data_final:document.getElementById("f-dfin").value,status:document.getElementById("f-status").value,pendencias:document.getElementById("f-pend").value,etapas:document.getElementById("f-etapas").value,obs:document.getElementById("f-obs").value,colaborador:document.getElementById("f-colab").value,habite_se:document.getElementById("f-hab").value,aquisicao:document.getElementById("f-aq").value};
-  LOCAL_OS=LOCAL_OS.filter(function(x){return x.os!==rec.os;});
+  LOCAL_OS=LOCAL_OS.filter(function(x){return String(x.os)!==String(rec.os);});
   LOCAL_OS.unshift(rec);
   localStorage.setItem("bnd_os",JSON.stringify(LOCAL_OS));
   syncOS(rec);
   closeM("mod-os"); buildDash(); renderAb(); renderFi();
+  showSync("✅ OS "+rec.os+" salva!",true);
+}
+function deleteOS(idx,type){
+  if(!temPerm("os_editar")){alert("Sem permissao para excluir OS.");return;}
+  var data=filteredOS(type),r=data[idx];if(!r) return;
+  if(!confirm("Excluir OS "+r.os+" — "+r.endereco+"?\nEsta ação não pode ser desfeita.")) return;
+  // Remove from LOCAL_OS
+  LOCAL_OS=LOCAL_OS.filter(function(x){return String(x.os)!==String(r.os);});
+  localStorage.setItem("bnd_os",JSON.stringify(LOCAL_OS));
+  // Remove from Supabase
+  fetch(SUPA_URL+"/rest/v1/ordens_servico?os=eq."+r.os,{method:"DELETE",headers:SUPA_H});
+  closeM("mod-det");
+  showSync("✅ OS "+r.os+" excluída",true);
+  buildDash(); renderAb(); renderFi();
 }
 function exportCSV(type){
   var data=filteredOS(type);
@@ -1744,7 +1806,7 @@ function saveTask(){
   if(!end){alert("Informe o endereço/obra.");return;}
   var task={id:editTaskId||genId(),crewId:crewId,tipo:tipo,endereco:end,cliente:document.getElementById("t-cli").value.trim(),os:document.getElementById("t-os").value.trim(),descricao:document.getElementById("t-desc").value.trim(),hora:document.getElementById("t-hora").value,obs:document.getElementById("t-obs").value.trim(),data:document.getElementById("t-data").value||dateKey(agDate),done:false};
   if(editTaskId){var i=TASKS.findIndex(function(t){return t.id===editTaskId;});if(i>=0){task.done=TASKS[i].done;TASKS[i]=task;}}else{TASKS.unshift(task);}
-  saveTasks(); syncTask(task); closeM("mod-task"); editTaskId=null; renderAgenda(); buildTodayPanel();
+  saveTasks(); syncTask(task); closeM("mod-task"); editTaskId=null; renderAgenda(); buildTodayPanel(); showSync("✅ Serviço salvo!",true);
 }
 function editTask(id){
   var t=TASKS.find(function(x){return x.id===id;});if(!t) return;
@@ -1794,7 +1856,8 @@ function saveCrew(){localStorage.setItem("bnd_crew",JSON.stringify(CREW));}
 function addCrew(){
   if(!temPerm("equipe")){alert("Sem permissao.");return;}
   var nome=document.getElementById("nc-nome").value.trim();
-  var role=document.getElementById("nc-role").value;
+  var roleVal=document.getElementById("nc-role").value;
+  var role=roleVal==="outro"?(document.getElementById("nc-role-outro").value.trim()||"outro"):roleVal;
   var tel=document.getElementById("nc-tel").value.trim();
   if(!nome){alert("Informe o nome.");return;}
   CREW.push({id:"c"+Date.now(),nome:nome,role:role,tel:tel});
