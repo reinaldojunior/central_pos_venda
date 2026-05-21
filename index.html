@@ -852,10 +852,15 @@ async function loadAllFromDB() {
   var results = await Promise.all([sGet("ordens_servico"), sGet("tarefas"), sGet("colaboradores")]);
   var osRows = results[0], taskRows = results[1], crewRows = results[2];
   if (osRows.length > 0) {
-    LOCAL_OS = osRows.map(function(r) {
-      return {os:r.os,empresa:r.empresa,setor:r.setor,grupo:r.grupo,endereco:r.endereco,emp:r.emp,servico:r.servico,acoes:r.acoes,data_chamado:r.data_chamado,data_visita:r.data_visita,data_final:r.data_final,status:r.status,pendencias:r.pendencias,etapas:r.etapas,obs:r.obs,colaborador:r.colaborador,habite_se:r.habite_se,aquisicao:r.aquisicao};
-    });
+    // Load Supabase records into LOCAL_OS (excludes deleted)
+    var deletedOsNums = JSON.parse(localStorage.getItem("bnd_deleted_os")||"[]");
+    LOCAL_OS = osRows
+      .filter(function(r){ return deletedOsNums.indexOf(String(r.os)) < 0; })
+      .map(function(r) {
+        return {os:r.os,empresa:r.empresa,setor:r.setor,grupo:r.grupo,endereco:r.endereco,emp:r.emp,servico:r.servico,acoes:r.acoes,data_chamado:r.data_chamado,data_visita:r.data_visita,data_final:r.data_final,status:r.status,pendencias:r.pendencias,etapas:r.etapas,obs:r.obs,colaborador:r.colaborador,habite_se:r.habite_se,aquisicao:r.aquisicao};
+      });
     localStorage.setItem("bnd_os", JSON.stringify(LOCAL_OS));
+    // allOS() will merge LOCAL_OS with local edits and planilha automatically
   }
   if (taskRows.length > 0) {
     TASKS = taskRows.map(function(r) {
@@ -1260,7 +1265,20 @@ function closeM(id){document.getElementById(id).classList.remove("open");}
 function fmtD(d){if(!d) return"—";var p=String(d).split("-");return p.length===3?p[2]+"/"+p[1]+"/"+p[0]:d;}
 function badgeSt(s){var m={"Aberto":"b-ab","Finalizado":"b-fi","Cancelada":"b-ca","Em Análise":"b-em"};return'<span class="badge '+(m[s]||"b-em")+'">'+( s||"—")+"</span>";}
 function empTag(e){var m={"NOVA":"e-nova","ANTIGA":"e-antiga","AGREGADO":"e-ag"};return'<span class="etag '+(m[e]||"e-ag")+'">'+(e||"—")+"</span>";}
-function allOS(){return LOCAL_OS.concat(DB);}
+function allOS(){
+  var deleted=JSON.parse(localStorage.getItem("bnd_deleted_os")||"[]");
+  var localEdits=JSON.parse(localStorage.getItem("bnd_local_edits")||"[]");
+  // OS numbers already covered
+  var covered={};
+  localEdits.forEach(function(r){ covered[String(r.os)]=true; });
+  LOCAL_OS.forEach(function(r){ covered[String(r.os)]=true; });
+  // DB (planilha) only if not already covered and not deleted
+  var dbOnly=DB.filter(function(r){
+    return !covered[String(r.os)] && deleted.indexOf(String(r.os))<0;
+  });
+  // Merge: local edits first, then Supabase, then planilha
+  return localEdits.concat(LOCAL_OS).concat(dbOnly);
+}
 function getInit(nome){return nome.split(" ").slice(0,2).map(function(w){return w[0]||"";}).join("").toUpperCase();}
 
 /* ── DIAS ABERTA ────────────────────────────────────────────── */
@@ -1584,9 +1602,15 @@ function saveOS(){
   var end=document.getElementById("f-end").value.trim();
   if(!end){alert("Informe o endereço/unidade.");return;}
   var rec={os:parseInt(document.getElementById("f-os").value)||nextOSNum(),empresa:document.getElementById("f-emp").value,setor:document.getElementById("f-setor").value,grupo:document.getElementById("f-grupo").value,endereco:end,emp:getEmp(end),servico:document.getElementById("f-serv").value,acoes:document.getElementById("f-acao").value,data_chamado:document.getElementById("f-dcham").value,data_visita:document.getElementById("f-dvis").value,data_final:document.getElementById("f-dfin").value,status:document.getElementById("f-status").value,pendencias:document.getElementById("f-pend").value,etapas:document.getElementById("f-etapas").value,obs:document.getElementById("f-obs").value,colaborador:document.getElementById("f-colab").value,habite_se:document.getElementById("f-hab").value,aquisicao:document.getElementById("f-aq").value};
-  LOCAL_OS=LOCAL_OS.filter(function(x){return String(x.os)!==String(rec.os);});
+  // Track this as a local edit (takes priority over DB)
+  var localEdits = JSON.parse(localStorage.getItem("bnd_local_edits")||"[]");
+  localEdits = localEdits.filter(function(x){ return String(x.os)!==String(rec.os); });
+  localEdits.unshift(rec);
+  localStorage.setItem("bnd_local_edits", JSON.stringify(localEdits));
+  // Update main array
+  LOCAL_OS = LOCAL_OS.filter(function(x){ return String(x.os)!==String(rec.os); });
   LOCAL_OS.unshift(rec);
-  localStorage.setItem("bnd_os",JSON.stringify(LOCAL_OS));
+  localStorage.setItem("bnd_os", JSON.stringify(LOCAL_OS));
   syncOS(rec);
   closeM("mod-os"); buildDash(); renderAb(); renderFi();
   showSync("✅ OS "+rec.os+" salva!",true);
@@ -1595,6 +1619,14 @@ function deleteOS(idx,type){
   if(!temPerm("os_editar")){alert("Sem permissao para excluir OS.");return;}
   var data=filteredOS(type),r=data[idx];if(!r) return;
   if(!confirm("Excluir OS "+r.os+" — "+r.endereco+"?\nEsta ação não pode ser desfeita.")) return;
+  // Track deleted so it never comes back from DB
+  var deleted=JSON.parse(localStorage.getItem("bnd_deleted_os")||"[]");
+  if(deleted.indexOf(String(r.os))<0) deleted.push(String(r.os));
+  localStorage.setItem("bnd_deleted_os",JSON.stringify(deleted));
+  // Remove from local edits
+  var localEdits=JSON.parse(localStorage.getItem("bnd_local_edits")||"[]");
+  localEdits=localEdits.filter(function(x){return String(x.os)!==String(r.os);});
+  localStorage.setItem("bnd_local_edits",JSON.stringify(localEdits));
   // Remove from LOCAL_OS
   LOCAL_OS=LOCAL_OS.filter(function(x){return String(x.os)!==String(r.os);});
   localStorage.setItem("bnd_os",JSON.stringify(LOCAL_OS));
@@ -1604,6 +1636,7 @@ function deleteOS(idx,type){
   showSync("✅ OS "+r.os+" excluída",true);
   buildDash(); renderAb(); renderFi();
 }
+
 function exportCSV(type){
   var data=filteredOS(type);
   var h=["OS","Empresa","Setor","Serviço","Endereço","Chamado","Visita","Final","Status","Pendências","Ações","Etapas","Obs","Colaborador"];
