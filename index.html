@@ -189,6 +189,7 @@ tbody td{padding:10px 13px;vertical-align:middle;}
 @media(max-width:640px){.fg,.dg{grid-template-columns:1fr;}.fg .full,.di.full{grid-column:1;}header{padding:0 13px;}main{padding:14px 11px;}.toolbar{flex-direction:column;}.srch{width:100%;}}
 @media print{header,nav,.toolbar,.btn,.acts,.alert-banner{display:none!important;}#view-relatorio{display:block!important;}#view-dash,#view-abertas,#view-fechadas,#view-financeiro,#view-agenda{display:none!important;}.view-section{display:block!important;}}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 <header>
@@ -300,7 +301,8 @@ tbody td{padding:10px 13px;vertical-align:middle;}
     <select id="fil-setor-ab" onchange="renderAb()"><option value="">Todos os setores</option><option>Bruta</option><option>Acabamento</option><option>Em Análise</option></select>
     <select id="fil-serv-ab" onchange="renderAb()"><option value="">Todos os serviços</option></select>
     <div class="sp"></div>
-    <button class="btn btn-o btn-sm" onclick="exportCSV('ab')">⬇ Exportar</button>
+    <button class="btn btn-o btn-sm" onclick="exportCSV('ab')">⬇ CSV</button>
+    <button class="btn btn-o btn-sm" onclick="exportExcel()" style="background:#1d6f42;color:#fff;border-color:#1d6f42">📊 Excel</button>
   </div>
   <div class="tw"><table>
     <thead><tr><th style="width:40px">👁</th><th>OS</th><th>Empresa</th><th>Endereço</th><th>Setor / Serviço</th><th>Chamado</th><th style="cursor:pointer;white-space:nowrap" onclick="toggleAbSort()" id="th-dias">Dias ↕</th><th>Status</th><th>Problema</th></tr></thead>
@@ -1046,6 +1048,51 @@ async function excluirFinanceiro(id){
   await sDel("financeiro","id",id);
   showSync("✅ Removido",true);
   renderPendFin();
+}
+
+/* ══ EXPORTAR EXCEL ══════════════════════════════════════════ */
+function toggleAbSort(){
+  window._abSort=(window._abSort==="asc"?"desc":"asc");
+  pgAb=1;renderAb();
+}
+function exportExcel(){
+  if(typeof XLSX === "undefined"){alert("Aguarde carregar o Excel...");return;}
+  var cols = ["os","grupo","empresa","setor","servico","endereco","emp","acoes","data_chamado","data_visita","data_final","status","pendencias","etapas","obs","colaborador","habite_se","aquisicao"];
+  var headers = ["OS","Grupo","Empresa","Setor","Serviço","Endereço","Empreendimento","Ações","Data Chamado","Data Visita","Data Final","Status","Pendências","Etapas","Observações","Colaborador","Habite-se","Aquisição"];
+  var grpLabel = {"urgente":"Urgente","moderado":"Moderado","baixa":"Baixa","1":"Urgente","2":"Urgente","3":"Moderado","4":"Baixa","5":"Baixa","1.0":"Urgente","2.0":"Urgente","3.0":"Moderado","4.0":"Baixa","5.0":"Baixa"};
+
+  function osToRow(r){
+    return cols.map(function(c){
+      if(c==="grupo") return grpLabel[String(r[c])]||r[c]||"";
+      return r[c]||"";
+    });
+  }
+
+  var all = allOS();
+  var abertas = all.filter(function(r){return r.status==="Aberto";}).sort(function(a,b){return (parseInt(b.os)||0)-(parseInt(a.os)||0);});
+  var fechadas = all.filter(function(r){return r.status!=="Aberto";}).sort(function(a,b){return (parseInt(b.os)||0)-(parseInt(a.os)||0);});
+
+  function makeSheet(rows){
+    var data = [headers].concat(rows.map(osToRow));
+    var ws = XLSX.utils.aoa_to_sheet(data);
+    // Column widths
+    ws["!cols"] = [8,10,8,12,14,22,16,20,12,12,12,12,30,30,25,16,12,12].map(function(w){return{wch:w};});
+    // Header style (bold)
+    headers.forEach(function(_,i){
+      var cell = XLSX.utils.encode_cell({r:0,c:i});
+      if(!ws[cell]) return;
+      ws[cell].s = {font:{bold:true},fill:{fgColor:{rgb:"1A3352"}},font:{color:{rgb:"FFFFFF"},bold:true}};
+    });
+    return ws;
+  }
+
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, makeSheet(abertas), "OS Abertas");
+  XLSX.utils.book_append_sheet(wb, makeSheet(fechadas), "OS Fechadas");
+
+  var date = new Date().toLocaleDateString("pt-BR").replace(/\//g,"-");
+  XLSX.writeFile(wb, "Central_PosVenda_"+date+".xlsx");
+  showSync("✅ Excel exportado!",true);
 }
 /* ── NORMALIZE ─────────────────────────────────────────────── */
 function ns(s){var m={"Eletrica":"Elétrica","ELétrica":"Elétrica","Pintua":"Pintura","Pisos":"Piso","Hridraulica":"Hidráulica","Hidraulica":"Hidráulica","bruta":"Bruta","diversos":"Diversos"};return m[s]||s||"";}
