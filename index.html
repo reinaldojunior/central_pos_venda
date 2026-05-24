@@ -1628,6 +1628,8 @@ function viewTask(id){
     '</div>'+
   '</div>';
   document.getElementById("view-edit-btn").onclick=function(){editTask(id);};
+  var vDelBtn=document.getElementById("view-del-btn");
+  if(vDelBtn) vDelBtn.onclick=function(){deleteTask(id);};
   openM("mod-view");
 }
 
@@ -2018,6 +2020,25 @@ function saveOS(){
   showSync("✅ OS "+rec.os+" salva!",true);
 }
 
+function deleteOS(idx,type){
+  if(!temPerm("os_editar")){alert("Sem permissão.");return;}
+  var data=filteredOS(type),r=data[idx];if(!r)return;
+  if(!confirm("Excluir OS "+r.os+"?\nEsta ação não pode ser desfeita."))return;
+  var delKey=r.uid||("_"+r.os+"_"+(r.pendencias||""));
+  var deleted=JSON.parse(localStorage.getItem("bnd_deleted_os")||"[]");
+  if(deleted.indexOf(delKey)<0)deleted.push(delKey);
+  localStorage.setItem("bnd_deleted_os",JSON.stringify(deleted));
+  var localEdits=JSON.parse(localStorage.getItem("bnd_local_edits")||"[]");
+  localEdits=localEdits.filter(function(x){return(x.uid||("_"+x.os+"_"+(x.pendencias||"")))!==delKey;});
+  localStorage.setItem("bnd_local_edits",JSON.stringify(localEdits));
+  LOCAL_OS=LOCAL_OS.filter(function(x){return(x.uid||("_"+x.os+"_"+(x.pendencias||"")))!==delKey;});
+  localStorage.setItem("bnd_os",JSON.stringify(LOCAL_OS));
+  if(r.uid){
+    sDel("ordens_servico","uid",r.uid);
+    fetch(SUPA_URL+"/rest/v1/os_deletadas",{method:"POST",headers:SUPA_H,body:JSON.stringify({uid:delKey,deletado_por:SESSION?SESSION.nome:"?"})});
+  }
+  closeM("mod-det");showSync("✅ OS "+r.os+" excluída",true);buildDash();renderAb();renderFi();
+}
 function exportCSV(type){
   var data=filteredOS(type);
   var h=["OS","Empresa","Setor","Serviço","Endereço","Chamado","Visita","Final","Status","Pendências","Ações","Etapas","Obs","Colaborador"];
