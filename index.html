@@ -1730,8 +1730,12 @@ function exportDia(){
 
 /* ── INIT ───────────────────────────────────────────────────── */
 window.addEventListener("DOMContentLoaded",function(){
-  var saved=localStorage.getItem("bnd_user");
-  if(saved){applyUser(saved);closeM("mod-welcome");}
+  // Restore session
+  var savedSession=localStorage.getItem("bnd_session");
+  if(savedSession){
+    try{SESSION=JSON.parse(savedSession);}catch(e){SESSION=null;}
+  }
+
   SERVICOS.forEach(function(s){
     ["fil-serv-ab","fil-serv-fi","f-serv"].forEach(function(id){
       var el=document.getElementById(id);if(!el) return;
@@ -1739,9 +1743,35 @@ window.addEventListener("DOMContentLoaded",function(){
     });
   });
   META.empreendimentos.forEach(function(e){var op=document.createElement("option");op.value=e;op.textContent=e;document.getElementById("t-end-dl").appendChild(op);});
-  populateCrewSel(); renderCrewList();
-  initRelFiltros();
-  buildDash(); renderAb(); renderFi(); renderPendFin();
+
+  if(SESSION){
+    // Already logged in - show app
+    var mc=document.getElementById("main-content");
+    var mn=document.getElementById("main-nav");
+    if(mc)mc.style.display="";
+    if(mn)mn.style.display="";
+    closeM("mod-login");
+    applyUser(SESSION.nome);
+    applyPermissions();
+    loadEnderecosSalvos();
+    loadEnderecosSupabase();
+    loadAllFromDB().then(function(){
+      populateCrewSel();renderCrewList();
+      initRelFiltros();
+      buildDash();renderAb();renderFi();renderPendFin();
+      showSync("✅ Bem-vindo, "+SESSION.nome.split(" ")[0]+"!",true);
+    }).catch(function(){
+      populateCrewSel();renderCrewList();
+      initRelFiltros();
+      buildDash();renderAb();renderFi();renderPendFin();
+    });
+  } else {
+    // Not logged in - show login modal
+    openM("mod-login");
+    populateCrewSel();renderCrewList();
+    initRelFiltros();
+    buildDash();renderAb();renderFi();renderPendFin();
+  }
 });
 
 
