@@ -2501,22 +2501,30 @@ function nextOSNum(){
   return max+1;
 }
 
-function saveOS(){
+async function saveOS(){
   if(!temPerm("os_editar")){alert("Sem permissao.");return;}
   var end=document.getElementById("f-end").value.trim();
   if(!end){alert("Informe o endereço/unidade.");return;}
   var _uid=document.getElementById("f-uid").value||null;
-  var _oldRec=_uid?allOS().find(function(x){return x.uid===_uid;})||null:null;
-  var rec={os:parseInt(document.getElementById("f-os").value)||nextOSNum(),uid:_uid,empresa:document.getElementById("f-emp").value,setor:document.getElementById("f-setor").value,grupo:document.getElementById("f-grupo").value,endereco:end,emp:getEmp(end),servico:document.getElementById("f-serv").value,acoes:document.getElementById("f-acao").value,data_chamado:document.getElementById("f-dcham").value,data_visita:document.getElementById("f-dvis").value,data_final:document.getElementById("f-dfin").value,status:document.getElementById("f-status").value,pendencias:document.getElementById("f-pend").value,etapas:document.getElementById("f-etapas").value,obs:document.getElementById("f-obs").value,colaborador:document.getElementById("f-colab").value,habite_se:document.getElementById("f-hab").value,aquisicao:document.getElementById("f-aq").value};
+  if(!_uid) _uid="os_"+(parseInt(document.getElementById("f-os").value)||nextOSNum())+"_"+Date.now();
+  var _oldRec=allOS().find(function(x){return x.uid===_uid;})||null;
+  var rec={os:parseInt(document.getElementById("f-os").value.trim())||nextOSNum(),uid:_uid,empresa:document.getElementById("f-emp").value,setor:document.getElementById("f-setor").value,grupo:document.getElementById("f-grupo").value,endereco:end,emp:getEmp(end),servico:document.getElementById("f-serv").value,acoes:document.getElementById("f-acao").value,data_chamado:document.getElementById("f-dcham").value,data_visita:document.getElementById("f-dvis").value,data_final:document.getElementById("f-dfin").value,status:document.getElementById("f-status").value,pendencias:document.getElementById("f-pend").value,etapas:document.getElementById("f-etapas").value,obs:document.getElementById("f-obs").value,colaborador:document.getElementById("f-colab").value,habite_se:document.getElementById("f-hab").value,aquisicao:document.getElementById("f-aq").value};
+
+  // Save DIRECTLY to Supabase first
+  showSync("⏳ Salvando...",true);
+  var ok=await sUpsertOS(rec);
+  if(!ok){showSync("❌ Erro ao salvar no banco!",false);return;}
+
+  // Update local cache (display only)
   var recKey=rec.uid||("_"+rec.os+"_"+(rec.pendencias||""));
+  LOCAL_OS=LOCAL_OS.filter(function(x){return(x.uid||("_"+x.os+"_"+(x.pendencias||"")))!==recKey;});
+  LOCAL_OS.unshift(rec);
+  localStorage.setItem("bnd_os",JSON.stringify(LOCAL_OS));
+  // Clear local edits for this record
   var localEdits=JSON.parse(localStorage.getItem("bnd_local_edits")||"[]");
   localEdits=localEdits.filter(function(x){return(x.uid||("_"+x.os+"_"+(x.pendencias||"")))!==recKey;});
-  localEdits.unshift(rec);
   localStorage.setItem("bnd_local_edits",JSON.stringify(localEdits));
-  // Remove from LOCAL_OS to avoid duplicate with localEdits
-  LOCAL_OS=LOCAL_OS.filter(function(x){return(x.uid||("_"+x.os+"_"+(x.pendencias||"")))!==recKey;});
-  localStorage.setItem("bnd_os",JSON.stringify(LOCAL_OS));
-  syncOS(rec);
+
   saveHistorico(rec,_oldRec);
   addEnderecoToDatalists(end);
   closeM("mod-os");buildDash();renderAb();renderFi();
@@ -2540,9 +2548,15 @@ function deleteOS(idx,type){
   localStorage.setItem("bnd_local_edits",JSON.stringify(localEdits));
   LOCAL_OS=LOCAL_OS.filter(function(x){return(x.uid||("_"+x.os+"_"+(x.pendencias||"")))!==delKey;});
   localStorage.setItem("bnd_os",JSON.stringify(LOCAL_OS));
-  // 2. Supabase OS
-  if(r.uid)sDel("ordens_servico","uid",r.uid);
-  else sDel("ordens_servico","os",osNum);
+  // 2. Supabase OS - delete precisely by uid or by os+endereco combination
+  if(r.uid){
+    sDel("ordens_servico","uid",r.uid);
+  } else {
+    // Use specific filter with os number AND endereco to avoid deleting siblings
+    fetch(SUPA_URL+"/rest/v1/ordens_servico?os=eq."+osNum+"&endereco=eq."+encodeURIComponent(r.endereco||""),{
+      method:"DELETE",headers:SUPA_H
+    }).catch(function(){});
+  }
   // 3. os_deletadas
   fetch(SUPA_URL+"/rest/v1/os_deletadas",{method:"POST",headers:Object.assign({},SUPA_H,{"Prefer":"return=minimal"}),body:JSON.stringify({uid:String(osNum),deletado_por:SESSION?SESSION.nome:"?"})}).catch(function(){});
   // 4. Despesas
