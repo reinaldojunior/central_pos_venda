@@ -770,9 +770,10 @@ tbody td{padding:10px 13px;vertical-align:middle;}
 </div>
 
 <script>
-const {"os":[],"pend_fin":[],"crew":[]} = {"os": [], "pend_fin": [], "crew": []};
+var SUPA_URL="https://swwqbemtgrfrjknajabn.supabase.co";
 var SUPA_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN3d3FiZW10Z3JmcmprbmFqYWJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyMjAwMDMsImV4cCI6MjA5NDc5NjAwM30.pxsfiqzhmIFHyCV5uaTeqJgafjOZuD4FeA-y8RjB2vA";
-var SUPA_H={"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"return=representation"};
+var SUPA_H={"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json"};
+const DB_RAW={"os":[],"pend_fin":[],"crew":[]};
 async function sGet(table,extra){try{var r=await fetch(SUPA_URL+"/rest/v1/"+table+"?order=created_at.desc"+(extra||""),{headers:SUPA_H});return r.ok?await r.json():[];}catch(e){return[];}}
 async function sUpsert(table,data){try{var r=await fetch(SUPA_URL+"/rest/v1/"+table+"?on_conflict=id",{method:"POST",headers:Object.assign({},SUPA_H,{"Prefer":"resolution=merge-duplicates,return=representation"}),body:JSON.stringify(data)});return r.ok;}catch(e){return false;}}
 async function sInsert(table,data){
@@ -903,7 +904,7 @@ async function doLogin(){
       showSync("✅ Bem-vindo, "+SESSION.nome.split(" ")[0]+"!",true);
       loadUserAvatar();
     });
-  }catch(e){showLoginErr("Erro de conexão.");btnEl.style.display="flex";loadEl.style.display="none";}
+  }catch(e){showLoginErr("Erro: "+e.message);btnEl.style.display="flex";loadEl.style.display="none";console.error("Login error:",e);}
 }
 document.addEventListener("keydown",function(e){if(e.key==="Enter"&&document.getElementById("mod-login")&&document.getElementById("mod-login").classList.contains("open"))doLogin();});
 function doLogout(){SESSION=null;localStorage.removeItem("bnd_session");location.reload();}
