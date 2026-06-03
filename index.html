@@ -1580,7 +1580,9 @@ function allOS(){
     var key=r.uid||("_"+r.os+"_"+(r.pendencias||""));
     return !covered[key]&&deleted.indexOf(key)<0&&deleted.indexOf(String(r.os))<0&&deleted.indexOf(r.uid)<0;
   });
-  return localEdits.concat(LOCAL_OS).concat(dbOnly);
+  var all=localEdits.concat(LOCAL_OS).concat(dbOnly);
+  all.sort(function(a,b){return (parseInt(b.os)||0)-(parseInt(a.os)||0);});
+  return all;
 }
 function getInit(nome){return nome.split(" ").slice(0,2).map(function(w){return w[0]||"";}).join("").toUpperCase();}
 
@@ -1717,7 +1719,7 @@ function buildDashOS(){
     rows+='<td style="font-size:.78rem">'+r.endereco+'<br><span style="font-size:.68rem;color:var(--txt3)">'+(r.servico||"—")+"</span></td>";
     rows+="<td>"+prioBadge(r.grupo)+"</td>";
     rows+="<td>"+diasStr+"</td>";
-    rows+='<td><button class="dash-os-view" data-idx="'+i+'" style="background:var(--sand2);border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:.8rem">👁</button></td>';
+    rows+='<td><button class="dash-os-view" data-idx="'+r.os+'" style="background:var(--sand2);border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:.8rem">👁</button></td>';
     rows+="</tr>";
   });
   el.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:.8rem">'+
@@ -1735,13 +1737,8 @@ function buildDashOS(){
   // Bind view buttons
   el.querySelectorAll(".dash-os-view").forEach(function(b){
     b.onclick=function(){
-      var idx=parseInt(this.getAttribute("data-idx"));
-      // Use filteredOS with empty filters
-      var saved=document.getElementById("srch-ab").value;
-      document.getElementById("srch-ab").value="";
-      pgAb=1;
-      viewOS(idx,"ab");
-      document.getElementById("srch-ab").value=saved;
+      var osNum=parseInt(this.getAttribute("data-idx"));
+      viewOS(osNum,"ab");
     };
   });
 }
@@ -1817,7 +1814,7 @@ function renderAb(){
   var rows="";
   for(var i=0;i<slice.length;i++){
     var r=slice[i];
-    var gi=(pgAb-1)*PAGE+i;
+    var gi=r.os;
     var pend=(r.pendencias||"").replace(/"/g,"&quot;").replace(/\n|\r/g," ");
     rows+="<tr>";
     rows+='<td><button class="act-btn act-v" data-gi="'+gi+'" title="Ver">👁</button></td>';
@@ -2369,7 +2366,7 @@ function renderFi(){
   if(!slice.length){tbody.innerHTML='<tr><td colspan="8"><div class="empty-st"><div>📂</div><p>Nenhuma OS encontrada.</p></div></td></tr>';renderPg("pg-fi",pages,pgFi,function(p){pgFi=p;renderFi();});return;}
   var rows="";
   for(var i=0;i<slice.length;i++){
-    var r=slice[i];var gi=(pgFi-1)*PAGE+i;
+    var r=slice[i];var gi=r.os;
     var pend=(r.pendencias||"").replace(/"/g,"&quot;").replace(/[\n\r]/g," ");
     rows+="<tr>";
     rows+='<td><button class="act-btn act-v" data-gi="'+gi+'" title="Ver">👁</button></td>';
@@ -2396,8 +2393,12 @@ function renderPg(id,pages,cur,cb){
   el.innerHTML=h;
 }
 
-function viewOS(idx,type){
-  var data=filteredOS(type),r=data[idx];if(!r) return;
+function viewOS(osNum,type){
+  var data=filteredOS(type);
+  var r=data.find(function(x){return parseInt(x.os)===parseInt(osNum);});
+  if(!r) r=allOS().find(function(x){return parseInt(x.os)===parseInt(osNum);});
+  if(!r) return;
+  var idx=data.indexOf(r);
   document.getElementById("det-ttl").textContent="OS "+r.os+" — "+r.endereco;
   document.getElementById("det-edit-btn").onclick=function(){closeM("mod-det");editOS(idx,type);};
   document.getElementById("det-body").innerHTML='<div class="dg">'+
