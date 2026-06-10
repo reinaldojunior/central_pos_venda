@@ -1581,7 +1581,14 @@ function allOS(){
     return !covered[key]&&deleted.indexOf(key)<0&&deleted.indexOf(String(r.os))<0&&deleted.indexOf(r.uid)<0;
   });
   var all=localEdits.concat(LOCAL_OS).concat(dbOnly);
-  all.sort(function(a,b){return (parseInt(b.os)||0)-(parseInt(a.os)||0);});
+  all.sort(function(a,b){
+    // Sort by data_chamado descending, fallback to os number
+    var da=a.data_chamado||"", db=b.data_chamado||"";
+    if(db&&da) return db.localeCompare(da);
+    if(db&&!da) return 1;
+    if(!db&&da) return -1;
+    return (parseInt(b.os)||0)-(parseInt(a.os)||0);
+  });
   return all;
 }
 function getInit(nome){return nome.split(" ").slice(0,2).map(function(w){return w[0]||"";}).join("").toUpperCase();}
@@ -1790,7 +1797,7 @@ function filteredOS(type){
   var setF=(document.getElementById("fil-setor-"+type)||{value:""}).value;
   var srvF=(document.getElementById("fil-serv-"+type)||{value:""}).value;
   var stF=type==="fi"?(document.getElementById("fil-status-fi")||{value:""}).value:"";
-  return allOS().filter(function(r){
+  var result=allOS().filter(function(r){
     if(type==="ab"&&r.status!=="Aberto") return false;
     if(type==="fi"&&r.status==="Aberto") return false;
     if(stF&&r.status!==stF) return false;
@@ -1799,6 +1806,17 @@ function filteredOS(type){
     if(q){var t=[r.os,r.endereco,r.servico,r.setor,r.empresa,r.colaborador,r.pendencias].join(" ").toLowerCase();if(t.indexOf(q)<0) return false;}
     return true;
   });
+  // Fechadas: sort by data_final desc (most recent first)
+  if(type==="fi"){
+    result.sort(function(a,b){
+      var da=a.data_final||"", db=b.data_final||"";
+      if(db&&da) return db.localeCompare(da);
+      if(db&&!da) return 1;
+      if(!db&&da) return -1;
+      return (parseInt(b.os)||0)-(parseInt(a.os)||0);
+    });
+  }
+  return result;
 }
 function renderAb(){
   var data=filteredOS("ab");
@@ -2147,8 +2165,8 @@ function shareColaborador(crewId){
   var crew=CREW.find(function(c){return c.id===crewId;});if(!crew){alert("Colaborador não encontrado.");return;}
   var tasks=TASKS.filter(function(t){return t.data===k&&t.crewId===crewId;}).sort(function(a,b){return(a.hora||"99:99").localeCompare(b.hora||"99:99");});
   if(!tasks.length){alert(crew.nome+" não tem serviços para este dia.");return;}
-  var msg="🏗️ *Bandeira Empreendimentos*\n📅 Programação de "+fmtDataLonga(k)+"\n━━━━━━━━━━━━━━━━━━\n\n👷 *"+crew.nome+"* — "+(RLABELS[crew.role]||crew.role)+"\n\n";
-  tasks.forEach(function(t,i){msg+="*"+(i+1)+".* "+(t.hora?"⏰"+t.hora+" ":"")+"🔨 "+(t.tipo||"Serviço")+"\n📍 "+(t.endereco||"—")+"\n"+(t.cliente?"👤 Cliente: *"+t.cliente+"*\n":"")+(t.os?"📋 OS: "+t.os+"\n":"")+(t.descricao?"📝 "+t.descricao+"\n":"")+(t.obs?"⚠️ Obs: "+t.obs+"\n":"")+"\n";});
+  var msg="*Bandeira Empreendimentos*\nProgramação de "+fmtDataLonga(k)+"\n---\n\n*"+crew.nome+"* — "+(RLABELS[crew.role]||crew.role)+"\n\n";
+  tasks.forEach(function(t,i){msg+="*"+(i+1)+".* "+(t.hora?t.hora+" ":"")+(t.tipo||"Serviço")+"\n📍 "+(t.endereco||"—")+"\n"+(t.cliente?"Cliente: *"+t.cliente+"*\n":"")+(t.os?"OS: "+t.os+"\n":"")+(t.descricao?t.descricao+"\n":"")+(t.obs?"⚠️ Obs: "+t.obs+"\n":"")+"\n";});
   msg+="━━━━━━━━━━━━━━━━━━\n✅ Qualquer dúvida, entre em contato.";
   var enc=encodeURIComponent(msg);
   if(crew.tel){var ph=crew.tel.replace(/\D/g,"");window.open("https://wa.me/"+(ph.startsWith("55")?ph:"55"+ph)+"?text="+enc,"_blank");}
