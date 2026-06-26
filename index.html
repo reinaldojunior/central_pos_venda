@@ -792,7 +792,8 @@ function showSync(msg,ok){var el=document.getElementById("sync-ind");if(!el)retu
 async function loadAllFromDB(){
   // Load tarefas with direct fetch (sGet uses created_at which tarefas doesn't have)
   var taskFetch=fetch(SUPA_URL+"/rest/v1/tarefas?order=data.desc",{headers:SUPA_H}).then(function(r){return r.ok?r.json():[];}).catch(function(){return[];});
-  var results=await Promise.all([sGet("ordens_servico"),taskFetch,sGet("colaboradores"),sGet("os_deletadas")]);
+  var crewFetch=fetch(SUPA_URL+"/rest/v1/colaboradores",{headers:SUPA_H}).then(function(r){return r.ok?r.json():[];}).catch(function(){return[];});
+  var results=await Promise.all([sGet("ordens_servico"),taskFetch,crewFetch,sGet("os_deletadas")]);
   var osRows=results[0],taskRows=results[1],crewRows=results[2],deletadosRows=results[3];
   // Sync remote deletions to localStorage
   if(deletadosRows&&deletadosRows.length){
@@ -2115,16 +2116,27 @@ function viewTask(id){
 
 /* ── CREW CRUD ──────────────────────────────────────────────── */
 function saveCrew(){localStorage.setItem("bnd_crew",JSON.stringify(CREW));}
-function addCrew(){
+async function addCrew(){
   var nome=document.getElementById("nc-nome").value.trim();
   var role=document.getElementById("nc-role").value;
   var tel=document.getElementById("nc-tel").value.trim();
   if(!nome){alert("Informe o nome.");return;}
-  CREW.push({id:"c"+Date.now(),nome:nome,role:role,tel:tel});
-  saveCrew(); document.getElementById("nc-nome").value=""; document.getElementById("nc-tel").value="";
+  var novo={id:"c"+Date.now(),nome:nome,role:role,tel:tel};
+  CREW.push(novo);
+  saveCrew();
+  await syncCrew(novo);
+  document.getElementById("nc-nome").value=""; document.getElementById("nc-tel").value="";
   renderCrewList(); populateCrewSel();
+  showSync("✅ Colaborador salvo!",true);
 }
-function deleteCrew(id){if(!confirm("Remover?")) return;CREW=CREW.filter(function(c){return c.id!==id;});saveCrew();renderCrewList();populateCrewSel();}
+function deleteCrew(id){
+  if(!confirm("Remover?")) return;
+  CREW=CREW.filter(function(c){return c.id!==id;});
+  saveCrew();
+  fetch(SUPA_URL+"/rest/v1/colaboradores?id=eq."+id,{method:"DELETE",headers:SUPA_H}).catch(function(){});
+  renderCrewList();populateCrewSel();
+  showSync("✅ Colaborador removido",true);
+}
 function renderCrewList(){
   document.getElementById("crew-list").innerHTML=CREW.map(function(c){
     return'<div style="background:var(--sand);border:1px solid var(--sand2);border-radius:9px;padding:10px 13px;display:flex;align-items:center;gap:10px">'+
